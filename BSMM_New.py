@@ -20,23 +20,23 @@ class BSMM(sklearn.base.BaseEstimator):
 
     def _init(self):
         ##initialization with kmeans
-        params = kmeans_init.init_params(self.data, self.n_components)
-        self.means = params['means']
-        self.prior = params['prior']
-        self.cov = params['cov_mat']
-        self.degs = params['degs']
-        self.low = params['lower_bound']
-        self.up = params['upper_bound']
+        # params = kmeans_init.init_params(self.data, self.n_components)
+        # self.means = params['means']
+        # self.prior = params['prior']
+        # self.cov = params['cov_mat']
+        # self.degs = params['degs']
+        # self.low = params['lower_bound']
+        # self.up = params['upper_bound']
 
         #initialization with random parameters
-        # self.means = np.array(np.random.random((self.n_components, self.d)) + np.mean(self.data))
-        # self.cov = np.array([np.asmatrix(np.identity(self.d)) for i in range(self.n_components)])
-        # self.prior = np.ones(self.n_components)/self.n_components
-        # self.degs = np.random.randint(self.n, size=self.n_components)
+        self.means = np.array(np.random.random((self.n_components, self.d)) + np.mean(self.data))
+        self.cov = np.array([np.asmatrix(np.identity(self.d)) for i in range(self.n_components)])
+        self.prior = np.ones(self.n_components)/self.n_components
+        self.degs = np.random.randint(self.n, size=self.n_components)
         # z: latent variable: probability of each point for each distribution
         self.z = np.array(np.empty((self.n, self.n_components), dtype=float))
-        # self.up = np.zeros((self.n_components, self.d)) + np.max(self.data, axis =0)
-        # self.low = np.zeros((self.n_components, self.d)) + np.min(self.data, axis=0)
+        self.up = np.zeros((self.n_components, self.d)) + np.max(self.data, axis =0)
+        self.low = np.zeros((self.n_components, self.d)) + np.min(self.data, axis=0)
         self.samples = np.empty((self.n_components, self.m, self.d)) # vector of samples
         self.inds = np.empty(shape=(self.n_components, self.m)) # vector of indicators
         for k in range(self.n_components):
@@ -70,6 +70,7 @@ class BSMM(sklearn.base.BaseEstimator):
             else:
                 log_l = temp_ll
                 print('log-likelihood: ', log_l)
+        return log_l
 
 
     def E_step(self):
@@ -83,7 +84,7 @@ class BSMM(sklearn.base.BaseEstimator):
         resp = np.zeros((self.n, self.n_components))
         for i in range(self.n):
             for k in range(self.n_components):
-                resp[i,k] = self.bsmm_pdf(self.data[i,:], self.means[k,:], self.cov[k,:], self.degs[k],  self.up[k], self.low[k], self.inds[k]) * self.prior[k]
+                resp[i,k] = self.bsmm_pdf(self.data[i,:], self.means[k,:], self.cov[k,:], self.degs[k], self.inds[k]) * self.prior[k]
                 resp[i,:] = t_pdf.fill_nans(resp[i,:])
 
             log_l += np.log(resp[i].sum()) #equation 7 in the paper
@@ -109,20 +110,24 @@ class BSMM(sklearn.base.BaseEstimator):
         for k in range(self.n_components):
             self.update_mean_cov(k)
 
-        print('new params')
-        print('means')
-        print(self.means)
-        print('cov matrix')
-        print(self.cov)
-        print('eigenvalues of cov matrices')
+        # print('new params')
+        # print('means')
+        # print(self.means)
+        # print('cov matrix')
+        # print(self.cov)
+        # print('eigenvalues of cov matrices')
         for k in range(self.n_components):
             evals, evecs = np.linalg.eigh(self.cov[k])
             print(evals)
 
 
     @staticmethod
-    def bsmm_pdf(x, mean, cov, deg, up, low, ind):
-        return t_pdf.bounded_multivariate_t_pdf(x, mean, cov, deg, up, low, ind)
+    def bsmm_pdf(x, mean, cov, deg, ind):
+        # return t_pdf.bounded_multivariate_t_pdf(x, mean, cov, deg, ind)
+        return t_pdf.bounded_multivariate_t_pdf_2(x, mean, cov, deg, ind)
+
+
+
 
     def sample(self, k):
         '''generate a sample of m data vectors from the t distribution with the parameters of the k-th component of the mixture
@@ -174,8 +179,8 @@ class BSMM(sklearn.base.BaseEstimator):
         self.cov[k] = cov # cov: new d*d covariance matrix for component k --> equation 15
         # assert (not (not np.allclose(cov, cov.T) or np.any(np.linalg.eigvalsh(cov) <= 0)))
         assert np.allclose(self.cov[k],self.cov[k].T)
-        print('difference with transpose')
-        print(cov-cov.T)
+        # print('difference with transpose')
+        # print(cov-cov.T)
 
 
     def h(self,data,k):
