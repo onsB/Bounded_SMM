@@ -3,10 +3,23 @@ from scipy.special import gamma
 from scipy.spatial import distance
 import math
 import data_sampler
+from t_pdf_2 import multivariate_t
 
-def bounded_multivariate_t_pdf(x, mean, cov, deg, up, low, ind):
+def bounded_multivariate_t_pdf(x, mean, cov, deg, ind):
     m = 5000  # size of the generated data to calculate the normalization constant
     pdf = multi_student_pdf(x, mean, cov, deg)
+    norm_const = ind.sum()
+    if norm_const == 0 :
+        norm_const += 1
+    pdf /= norm_const
+    if pdf == 0:
+        pdf += 1e-6
+    return pdf
+
+def bounded_multivariate_t_pdf_2(x, mean, cov, deg, ind):
+    m = 5000  # size of the generated data to calculate the normalization constant
+    deg = int(deg)
+    pdf = multivariate_t.pdf(x, mean, cov, deg)
     norm_const = ind.sum()
     if norm_const == 0 :
         norm_const += 1
