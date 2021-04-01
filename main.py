@@ -1,5 +1,5 @@
 from BSMM_New import *
-from mml import *
+# from mml import *
 from pathlib import Path
 # import numpy as np
 from sklearn import datasets
@@ -9,6 +9,7 @@ from sklearn.metrics import accuracy_score
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.manifold import MDS
+from plot import *
 
 def print_performance(posterior, target_labels):
     print(posterior.argmax(axis=1))
@@ -106,7 +107,7 @@ def main():
     # print_performance(bsmm2.z,labels2)
     # print('components: ',bsmm2.n_components)
 
-    p = Path(__file__).parent.parent
+
 
     # ---------household Power consumption dataset------------
     # ahu = pd.read_csv(
@@ -115,11 +116,57 @@ def main():
     # cons = pd.read_csv('C:/Users/OnsB/Desktop/thesis/datasets/smart buildings/household data consumption/ready_data.csv')
     cons = pd.read_csv('datasets/household_consumption.csv')
     # the data is already scaled with MinMax scaling, now we apply multidimensional scaling
-    mds = MDS(10, random_state=0)
-    cons = mds.fit_transform(cons)
-    bsmm_cons = BSMM(X=cons, n_components=2)
-    bsmm_cons._init()
+    #mds = MDS(10, random_state=0)
+    #cons_ = mds.fit_transform(cons)
+    bsmm_cons = BSMM(X=np.asarray(cons), n_components=2)
+    bsmm_cons._init(inittype='kmeans')
     logl = bsmm_cons.fit(tol=1e-10)
+
+
+    # -----scatter plot for the household consumption dataset-----
+    # plt.scatter(res[:,0],res[:,1],)
+    cluster_found = bsmm_cons.z.argmax(axis=1)
+    f = plt.figure(figsize = (10,5))
+    f = plot_tsne(cons, cluster_found, f)
+    plt.show()
+
+    f2 = plt.figure(figsize = (10,5))
+    f2 = plot_timeseries(cons, cluster_found, f2, color_list=['black','yellow'])
+    plt.show()
+
+    # f3 = plt.figure(figsize = (10,15))
+    # f3 = plot_separate_clusters(cons, cluster_found, f3)
+    # plt.show()
+    f3 = plt.figure(figsize = (10,15))
+    cons_ = cons.copy()
+    try:
+        cons_['cluster'] = cluster_found
+    except:
+        raise ValueError('clusters parameter must be a np array of the same size as data.shape[0]')
+    f3.add_subplot(2, 1, 1)
+    current = cons_[cons_['cluster'] == 0].drop(columns=['cluster'])
+    ttl = 'time-series of cluster number ' + str(0)
+    current.T.plot(figsize=(13, 8), title=ttl, color = 'blue')
+    f3.add_subplot(2, 1, 2)
+    current = cons_[cons_['cluster'] == 1].drop(columns=['cluster'])
+    ttl = 'time-series of cluster number ' + str(1)
+    current.T.plot(figsize=(13, 8), title=ttl, color = 'green')
+    plt.show()
+
+    def clusters_found(resp):
+        clusters = resp.argmax(axis=1)
+        clusters_dic = {}
+        for i in np.unique(clusters):
+            clusters_dic[i] = np.count_nonzero(clusters==i)
+        return clusters_dic
+
+    dic = clusters_found(bsmm_cons.z)
+    print('cluster stats')
+    print(dic)
+
+
+
+
 
 
 
